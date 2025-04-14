@@ -15,19 +15,24 @@ class Config:
     MYSQL_PORT = os.environ.get('MYSQL_PORT', '3306')
     MYSQL_DB = os.environ.get('MYSQL_DB')
     
-    # Construct SQLAlchemy URI with proper formatting for ngrok
+    # Construct SQLAlchemy URI with proper formatting for domain name
     SQLALCHEMY_DATABASE_URI = f'mysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Add connection pool settings for better stability
+    # Add connection pool settings for better stability with domain names
     SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_size': 10,
-        'pool_recycle': 3600,
+        'pool_size': 5,
+        'pool_recycle': 1800,
         'pool_pre_ping': True,
         'connect_args': {
-            'connect_timeout': 60,
-            'read_timeout': 60,
-            'write_timeout': 60
+            'connect_timeout': 30,
+            'read_timeout': 30,
+            'write_timeout': 30,
+            'ssl': {
+                'verify_cert': False
+            },
+            'use_unicode': True,
+            'charset': 'utf8mb4'
         }
     }
     print(SQLALCHEMY_DATABASE_URI)
