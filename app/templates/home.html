@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block content %}
     <div class="container">
-        <h1 class="mb-4">Latest Posts</h1>
+        <h1 class="mb-4">Latest Posts to Read!</h1>
         {% if posts %}
             {% for post in posts %}
                 <article class="card mb-4 {% if post.is_hidden %}border-warning{% endif %}">
