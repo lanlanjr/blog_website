@@ -5,9 +5,9 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'you-will-never-guess'
     
     # MySQL database configuration
-    MYSQL_USER = os.environ.get('MYSQL_USER') or 'root'
-    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD') or 'admin'
-    MYSQL_HOST = os.environ.get('MYSQL_HOST') or 'localhost'
+    MYSQL_USER = os.environ.get('MYSQL_USER')
+    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD')
+    MYSQL_HOST = os.environ.get('MYSQL_HOST')
     MYSQL_DB = os.environ.get('MYSQL_DB') or 'aibo$flask_blog'
     
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
