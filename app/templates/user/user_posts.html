@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body d-flex">
+                    <img src="{{ url_for('static', filename='profile_pics/' + user.profile_picture) }}" alt="Profile Picture" class="rounded-circle me-4" style="width: 100px; height: 100px; object-fit: cover;">
+                    <div>
+                        <h2>{{ user.full_name }}</h2>
+                        <p class="text-muted">@{{ user.username }}</p>
+                        <p class="text-muted">{{ user.email }}</p>
+                        {% if user.bio %}
+                        <p>{{ user.bio }}</p>
+                        {% endif %}
+                        <p>
+                            <span class="badge {% if user.role == 'admin' %}bg-danger{% else %}bg-primary{% endif %}">
+                                {{ user.role }}
+                            </span>
+                        </p>
+                        <p class="small text-muted">Member since: {{ user.created_at.strftime('%Y-%m-%d') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="mb-3">Posts by {{ user.full_name }} ({{ posts.total }})</h3>
+    
+    {% for post in posts.items %}
+    <article class="card mb-4 {% if post.is_hidden %}border-warning{% endif %}">
+        <div class="card-body">
+            <h2 class="card-title">
+                {{ post.title }}
+                {% if post.is_hidden %}
+                    <span class="badge bg-warning text-dark">Hidden</span>
+                {% endif %}
+            </h2>
+            <p class="card-text text-muted">
+                Posted on {{ post.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+            </p>
+            <p class="card-text">{{ post.content|striptags|truncate(200) }}</p>
+            <a href="{{ url_for('posts.post', post_id=post.id) }}" class="btn btn-primary">Read More</a>
+            
+            {% if (user == current_user or current_user.is_admin()) %}
+                <form action="{{ url_for('posts.toggle_visibility', post_id=post.id) }}" method="POST" class="d-inline mt-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    {% if post.is_hidden %}
+                        <button type="submit" class="btn btn-sm btn-success">Unhide Post</button>
+                    {% else %}
+                        <button type="submit" class="btn btn-sm btn-warning">Hide Post</button>
+                    {% endif %}
+                </form>
+            {% endif %}
+        </div>
+    </article>
+    {% else %}
+    <div class="alert alert-info">
+        No posts by this user yet.
+    </div>
+    {% endfor %}
+
+    <!-- Pagination -->
+    {% if posts.pages > 1 %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            {% if posts.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('users.user_posts', username=user.username, page=posts.prev_num) }}">Previous</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">Previous</span>
+            </li>
+            {% endif %}
+
+            {% for page_num in posts.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    {% if posts.page == page_num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('users.user_posts', username=user.username, page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                    {% endif %}
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if posts.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('users.user_posts', username=user.username, page=posts.next_num) }}">Next</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">Next</span>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %} 

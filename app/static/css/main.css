@@ -1,0 +1,154 @@
+/* General Styles */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+main {
+    flex: 1;
+}
+
+/* Navbar Styling */
+.navbar-brand {
+    font-weight: bold;
+}
+
+.nav-link {
+    font-weight: 500;
+}
+
+/* Card Styling */
+.card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: none;
+    margin-bottom: 20px;
+}
+
+.card-header {
+    font-weight: bold;
+}
+
+/* Post Cards */
+article.card {
+    transition: transform 0.3s ease;
+}
+
+article.card:hover {
+    transform: translateY(-5px);
+}
+
+/* Button Styling */
+.btn {
+    border-radius: 4px;
+    padding: 8px 16px;
+}
+
+/* Footer Styling */
+footer {
+    margin-top: auto;
+}
+
+/* Table Styling */
+.table th {
+    background-color: #f8f9fa;
+}
+
+/* Form Controls */
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Comment Styling */
+.comment-container {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+}
+
+.comment-container:last-child {
+    border-bottom: none;
+}
+
+.comment-content, .reply-content {
+    background-color: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 0.5rem;
+}
+
+.replies {
+    border-left: 2px solid #dee2e6;
+    padding-left: 15px;
+}
+
+/* Nested replies styling */
+.replies .replies {
+    margin-left: 10px !important;
+}
+
+.replies .replies .comment-content {
+    font-size: 0.9rem;
+}
+
+.comment-actions button, .reply-actions button {
+    font-size: 0.8rem;
+}
+
+.reply-button {
+    text-decoration: none;
+}
+
+.toggle-replies {
+    cursor: pointer;
+}
+
+.reply-form {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 0.5rem;
+}
+
+/* Profile Picture */
+.profile-pic-sm {
+    width: 30px;
+    height: 30px;
+    object-fit: cover;
+}
+
+.profile-pic-md {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+}
+
+/* Code Block Styling */
+pre.ql-syntax {
+    border-radius: 6px;
+    padding: 15px;
+    margin: 15px 0;
+    overflow-x: auto;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    background-color: #282c34 !important;
+    border: 1px solid #444;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Inline Code Styling */
+code {
+    background-color: rgba(0, 0, 0, 0.08);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    font-size: 90%;
+}
+
+/* Code Block in Comments */
+.comment-content pre.ql-syntax,
+.replies pre.ql-syntax {
+    font-size: 13px;
+    padding: 12px;
+    margin: 10px 0;
+} 

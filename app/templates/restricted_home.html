@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container">
+    <div class="jumbotron p-5 mb-4 bg-light rounded-3">
+        <div class="container-fluid py-3 text-center">
+            <h1 class="display-4">Welcome to Flask Blog</h1>
+            <p class="lead">A community where you can share your thoughts and ideas.</p>
+            <hr class="my-4">
+            <p>Sign up now to access full blog posts, leave comments, and join the discussion!</p>
+            <div class="mt-4">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg me-2">Login</a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-success btn-lg">Register</a>
+            </div>
+        </div>
+    </div>
+
+    <h1 class="mb-4">Latest Posts</h1>
+    
+    <div class="alert alert-info mb-4">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-lock me-3 fa-2x"></i>
+            <div>
+                <h5 class="mb-1">Content Restricted</h5>
+                <p class="mb-0">To view the full content of our posts, please log in or create an account.</p>
+            </div>
+        </div>
+    </div>
+    
+    {% if posts %}
+        {% for post in posts %}
+            <article class="card mb-4">
+                <div class="card-body">
+                    <h2 class="card-title">{{ post.title }}</h2>
+                    <p class="card-text text-muted">
+                        Posted by {{ post.author.full_name }} on {{ post.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                    </p>
+                    <p class="card-text">{{ post.content[:100] }}{% if post.content|length > 100 %}...{% endif %}</p>
+                    <div class="text-center mt-3 border-top pt-3">
+                        <p class="text-muted fst-italic">Login to read more and view comments</p>
+                        <a href="{{ url_for('auth.login', next=url_for('posts.post', post_id=post.id)) }}" class="btn btn-primary">Login to Read More</a>
+                    </div>
+                </div>
+            </article>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info">
+            No posts yet.
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

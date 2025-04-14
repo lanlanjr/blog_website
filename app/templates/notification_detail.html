@@ -1,0 +1,84 @@
+{% extends 'layout.html' %}
+
+{% block title %}{{ notification.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0">Notification</h3>
+                    <a href="{{ url_for('notifications.view_all') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Notifications
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    <div class="notification-header mb-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4>{{ notification.title }}</h4>
+                            <span class="text-muted">{{ notification.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+                        <div class="d-flex mt-2">
+                            {% if notification.category %}
+                            <span class="badge bg-secondary me-2">{{ notification.category.name }}</span>
+                            {% endif %}
+                            <span class="badge {% if notification.status.value == 'unread' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                {{ notification.status.value|title }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="notification-content mb-4">
+                        <p>{{ notification.message }}</p>
+                    </div>
+                    
+                    {% if notification.sender %}
+                    <div class="sender-info mb-3">
+                        <small class="text-muted">From:</small>
+                        <div class="d-flex align-items-center mt-1">
+                            <img src="{{ url_for('static', filename='profile_pics/' + notification.sender.profile_picture) }}" alt="{{ notification.sender.username }}" class="avatar-sm rounded-circle me-2">
+                            <span>{{ notification.sender.username }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if notification.link %}
+                    <div class="mt-4">
+                        <a href="{{ notification.link }}" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt me-1"></i> View Related Content
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer d-flex justify-content-between">
+                    <div>
+                        {% if notification.status.value == 'unread' %}
+                            <form action="{{ url_for('notifications.mark_read', notification_id=notification.id) }}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-check me-1"></i> Mark as Read
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                    <form action="{{ url_for('notifications.delete_notification', notification_id=notification.id) }}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this notification?');">
+                            <i class="fas fa-trash me-1"></i> Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

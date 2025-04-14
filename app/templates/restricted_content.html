@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    <h1 class="card-title mb-4">{{ title }}</h1>
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-lock fa-2x mb-3"></i>
+                        <h3>Content Restricted</h3>
+                        <p>To view the full content of this post, please log in or create an account.</p>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5>Preview</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">{{ post_preview }}</p>
+                            <p class="fst-italic text-center">... Login to read more ...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 col-md-6 mx-auto">
+                        <a href="{{ url_for('auth.login', next=url_for('posts.post', post_id=post_id)) }}" class="btn btn-primary btn-lg">Log In</a>
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-success btn-lg">Create Account</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <a href="{{ url_for('main.home') }}" class="btn btn-outline-secondary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

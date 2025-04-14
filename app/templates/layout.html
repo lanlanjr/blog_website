@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if title %}{{ title }} - Flask Blog{% else %}Flask Blog{% endif %}</title>
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    
+    <!-- highlight.js for syntax highlighting in code blocks -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
+    <!-- Jodit Editor Dependencies -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.6/jodit.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.6/jodit.min.js"></script>
+    
+    <!-- Custom Jodit Editor Styling -->
+    <style>
+        .jodit-container {
+            border-radius: 0.25rem;
+            margin-bottom: 1rem;
+        }
+        
+        .jodit-toolbar__box {
+            border-top-left-radius: 0.25rem;
+            border-top-right-radius: 0.25rem;
+        }
+        
+        .jodit-workplace {
+            border-bottom-left-radius: 0.25rem;
+            border-bottom-right-radius: 0.25rem;
+        }
+        
+        .jodit-wysiwyg {
+            min-height: 300px;
+            padding: 1rem;
+        }
+        
+        .jodit-wysiwyg img {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .jodit-wysiwyg h1 {
+            font-size: 1.8rem;
+        }
+        
+        .jodit-wysiwyg h2 {
+            font-size: 1.5rem;
+        }
+        
+        .jodit-wysiwyg h3 {
+            font-size: 1.3rem;
+        }
+        
+        .jodit-wysiwyg blockquote {
+            border-left: 2px solid #ced4da;
+            margin-left: 0;
+            padding-left: 1rem;
+            color: #6c757d;
+        }
+        
+        .jodit-wysiwyg pre {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            overflow-x: auto;
+        }
+        
+        .jodit-wysiwyg code {
+            font-family: monospace;
+        }
+        
+        /* Code block styling for main content */
+        .post-content pre {
+            background: #282c34;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            position: relative;
+        }
+        
+        .post-content pre code {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #abb2bf;
+            display: block;
+            padding: 0;
+            tab-size: 2;
+        }
+        
+        .post-content code.hljs {
+            padding: 0;
+            background: transparent;
+        }
+        
+        .code-block-container {
+            position: relative;
+            margin: 1.5rem 0;
+        }
+        
+        .copy-code-btn {
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+        
+        .copy-code-btn:hover {
+            opacity: 1;
+        }
+        
+        /* Inline code styling */
+        .post-content code:not(pre code) {
+            background: #f1f1f1;
+            border-radius: 3px;
+            padding: 0.1em 0.4em;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #e83e8c;
+        }
+    </style>
+    
+    <!-- File Upload Utility for Jodit -->
+    <script>
+    function joditUploadImage(formData) {
+        return new Promise((resolve, reject) => {
+            // Make sure CSRF token is included
+            formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+            
+            fetch('{{ url_for("posts.upload_image") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success || data.url || data.link) {
+                    // Return in Jodit expected format
+                    resolve({
+                        success: true,
+                        files: [data.url || data.link],
+                        msg: 'Upload successful'
+                    });
+                } else {
+                    reject(new Error(data.message || 'Image upload failed'));
+                }
+            })
+            .catch(error => {
+                console.error('Error uploading image:', error);
+                reject(error);
+            });
+        });
+    }
+    </script>
+    
+    <!-- Add Toast CSS -->
+    <style>
+        .notification-toast {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            z-index: 9999;
+        }
+        
+        .notification-preview {
+            max-height: 60px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        
+        .notification-toast .toast {
+            width: 350px;
+            background-color: #fff;
+            border-left: 4px solid #0d6efd;
+        }
+        
+        .notification-toast .toast:hover {
+            cursor: pointer;
+            background-color: #f8f9fa;
+        }
+        
+        .bell-icon-container {
+            position: relative;
+        }
+
+        .bell-animation {
+            animation: bell-ring 1s ease;
+        }
+
+        @keyframes bell-ring {
+            0% { transform: rotate(0); }
+            10% { transform: rotate(10deg); }
+            20% { transform: rotate(-10deg); }
+            30% { transform: rotate(10deg); }
+            40% { transform: rotate(-10deg); }
+            50% { transform: rotate(0); }
+            100% { transform: rotate(0); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container">
+                <a class="navbar-brand" href="{{ url_for('main.home') }}">Flask Blog</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.home') }}">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.about') }}">About</a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav">
+                        {% if current_user.is_authenticated %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('posts.new_post') }}">New Post</a>
+                            </li>
+                            {% if current_user.is_admin() %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Admin
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                                    <li><a class="dropdown-item" href="{{ url_for('admin.admin_dashboard') }}">Dashboard</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('admin.manage_users') }}">Manage Users</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('admin.manage_posts') }}">Manage Posts</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('admin.pending_users') }}">Pending Users</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('admin.create_system_notification') }}">Send System Notification</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('admin.view_system_notifications') }}">View System Notifications</a></li>
+                                </ul>
+                            </li>
+                            {% endif %}
+                            <li class="nav-item">
+                                <a class="nav-link position-relative" href="{{ url_for('notifications.view_all') }}">
+                                    <div class="bell-icon-container">
+                                        <i class="fas fa-bell" id="notification-bell"></i>
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notification-badge" {% if current_user.get_unread_notifications_count() == 0 %}style="display: none;"{% endif %}>
+                                            {{ current_user.get_unread_notifications_count() }}
+                                            <span class="visually-hidden">unread notifications</span>
+                                        </span>
+                                    </div>
+                                </a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <img src="{{ url_for('static', filename='profile_pics/' + current_user.profile_picture) }}" alt="Profile" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover;">
+                                    {{ current_user.username }}
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="userDropdown">
+                                    <li><a class="dropdown-item" href="{{ url_for('users.profile') }}">Profile</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('users.user_posts', username=current_user.username) }}">My Posts</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('notifications.settings') }}">Notification Settings</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
+                                </ul>
+                            </li>
+                        {% else %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('auth.login') }}">Login</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('auth.register') }}">Register</a>
+                            </li>
+                            <li class="nav-item ms-2">
+                                <a class="btn btn-outline-light" href="{{ url_for('auth.register') }}">Join Now</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        
+        {% if not current_user.is_authenticated %}
+        <div class="bg-warning py-2 text-center">
+            <div class="container">
+                <p class="mb-0">
+                    <i class="fas fa-lock me-2"></i>
+                    To access full content and features, please <a href="{{ url_for('auth.login') }}" class="text-dark fw-bold">login</a> or <a href="{{ url_for('auth.register') }}" class="text-dark fw-bold">create an account</a>.
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </header>
+    
+    <!-- Toast container for real-time notifications -->
+    {% if current_user.is_authenticated %}
+    <div class="notification-toast" id="notification-toast-container"></div>
+    {% endif %}
+    
+    <main class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages and not request.path.startswith('/notifications') %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </main>
+    
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container text-center">
+            <p>&copy; 2023 Flask Blog. All rights reserved.</p>
+        </div>
+    </footer>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% if current_user.is_authenticated %}
+    <script>
+        // Store current notification count
+        let currentNotificationCount = Number("{{ current_user.get_unread_notifications_count() }}");
+        let latestNotificationId = 0;
+        let checkInterval = 10000; // Check every 10 seconds
+        
+        // Get the elements
+        const notificationBell = document.getElementById('notification-bell');
+        const notificationBadge = document.getElementById('notification-badge');
+        const toastContainer = document.getElementById('notification-toast-container');
+        
+        // Function to check for new notifications
+        function checkNotifications() {
+            fetch("{{ url_for('notifications.unread_count') }}")
+                .then(response => response.json())
+                .then(data => {
+                    // Update badge count
+                    updateNotificationBadge(data.count);
+                    
+                    // If we have new notifications, fetch them
+                    if (data.count > currentNotificationCount) {
+                        // Animate the bell icon
+                        notificationBell.classList.add('bell-animation');
+                        setTimeout(() => {
+                            notificationBell.classList.remove('bell-animation');
+                        }, 1000);
+                        
+                        fetchLatestNotifications();
+                    }
+                    
+                    // Update current count
+                    currentNotificationCount = data.count;
+                })
+                .catch(error => console.error('Error fetching notification count:', error));
+        }
+        
+        // Function to update the notification badge
+        function updateNotificationBadge(count) {
+            if (count > 0) {
+                notificationBadge.textContent = count;
+                notificationBadge.style.display = 'inline-block';
+            } else {
+                notificationBadge.style.display = 'none';
+            }
+        }
+        
+        // Function to fetch latest notifications
+        function fetchLatestNotifications() {
+            fetch("{{ url_for('notifications.get_latest') }}")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.notifications && data.notifications.length > 0) {
+                        // Display toast notifications for new notifications
+                        data.notifications.forEach(notification => {
+                            if (notification.id > latestNotificationId) {
+                                showNotificationToast(notification);
+                                latestNotificationId = Math.max(latestNotificationId, notification.id);
+                            }
+                        });
+                    }
+                })
+                .catch(error => console.error('Error fetching latest notifications:', error));
+        }
+        
+        // Function to display a notification toast
+        function showNotificationToast(notification) {
+            const toastId = `notification-toast-${notification.id}`;
+            
+            // Check if this notification toast already exists
+            if (document.getElementById(toastId)) {
+                return; // Skip if already showing
+            }
+            
+            // Create toast element
+            const toastElement = document.createElement('div');
+            toastElement.className = 'toast show';
+            toastElement.id = toastId;
+            toastElement.setAttribute('role', 'alert');
+            toastElement.setAttribute('aria-live', 'assertive');
+            toastElement.setAttribute('aria-atomic', 'true');
+            
+            // Add click handler to navigate to the notification
+            toastElement.addEventListener('click', function(e) {
+                // Don't navigate if clicking close button
+                if (e.target.classList.contains('btn-close') || 
+                    e.target.closest('.btn-close')) {
+                    return;
+                }
+                const notificationUrl = "{{ url_for('notifications.view_notification', notification_id=0) }}".replace('0', notification.id);
+                window.location.href = notificationUrl;
+            });
+            
+            // Create toast content
+            const categoryBadge = notification.category ? 
+                `<span class="badge bg-secondary">${notification.category}</span>` : '';
+                
+            toastElement.innerHTML = `
+                <div class="toast-header">
+                    <strong class="me-auto">${notification.title}</strong>
+                    <small class="text-muted">just now</small>
+                    <button type="button" class="btn-close" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    <div class="notification-preview">${notification.message}</div>
+                    <div class="mt-2">${categoryBadge}</div>
+                </div>
+            `;
+            
+            // Add to container
+            toastContainer.appendChild(toastElement);
+            
+            // Handle close button
+            const closeButton = toastElement.querySelector('.btn-close');
+            closeButton.addEventListener('click', function(e) {
+                e.stopPropagation(); // Prevent navigation
+                dismissToast(toastId);
+            });
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                dismissToast(toastId);
+            }, 5000);
+        }
+        
+        // Function to dismiss a toast
+        function dismissToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 500);
+            }
+        }
+        
+        // Initial check and set interval
+        setTimeout(checkNotifications, 1000); // First check after 1 second
+        setInterval(checkNotifications, checkInterval);
+        
+        // Set the initial latest notification ID
+        fetch("{{ url_for('notifications.get_latest_id') }}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.latest_id) {
+                    latestNotificationId = data.latest_id;
+                }
+            })
+            .catch(error => console.error('Error fetching latest notification ID:', error));
+    </script>
+    {% endif %}
+    
+    {% block scripts %}{% endblock %}
+    
+    <!-- Modal container for modals that need to be outside the normal flow -->
+    {% block modals %}{% endblock %}
+</body>
+</html> 

@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="container">
+        <h1 class="mb-4">Latest Posts</h1>
+        {% if posts %}
+            {% for post in posts %}
+                <article class="card mb-4 {% if post.is_hidden %}border-warning{% endif %}">
+                    <div class="card-body">
+                        <h2 class="card-title">
+                            {{ post.title }}
+                            {% if post.is_hidden %}
+                                <span class="badge bg-warning text-dark">Hidden</span>
+                            {% endif %}
+                        </h2>
+                        <p class="card-text text-muted">
+                            Posted by <a href="{{ url_for('users.user_posts', username=post.author.username) }}">{{ post.author.full_name }}</a> on {{ post.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                        </p>
+                        <p class="card-text">{{ post.content|striptags|truncate(200) }}</p>
+                        <a href="{{ url_for('posts.post', post_id=post.id) }}" class="btn btn-primary">Read More</a>
+                        
+                        {% if post.author == current_user and post.is_hidden %}
+                            <form action="{{ url_for('posts.toggle_visibility', post_id=post.id) }}" method="POST" class="d-inline mt-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-sm btn-success">Unhide Post</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </article>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                No posts yet. Be the first to create a post!
+            </div>
+        {% endif %}
+    </div>
+{% endblock %} 

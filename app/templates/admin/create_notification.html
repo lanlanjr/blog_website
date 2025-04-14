@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h2 class="mb-0">Send System Notification</h2>
+                </div>
+                <div class="card-body">
+                    <p class="mb-4">Use this form to send system notifications to users. System notifications appear in users' notification center and as toast notifications.</p>
+                    
+                    <form method="POST" action="">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ form.title.label(class="form-label") }}
+                            {% if form.title.errors %}
+                                {{ form.title(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.title.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.title(class="form-control") }}
+                            {% endif %}
+                            <div class="form-text">A concise title for the notification</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.message.label(class="form-label") }}
+                            {% if form.message.errors %}
+                                {{ form.message(class="form-control is-invalid", rows=5) }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.message.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.message(class="form-control", rows=5) }}
+                            {% endif %}
+                            <div class="form-text">The main notification message</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.link.label(class="form-label") }}
+                            {% if form.link.errors %}
+                                {{ form.link(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.link.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.link(class="form-control", placeholder="/page or https://example.com") }}
+                            {% endif %}
+                            <div class="form-text">URL where users will be directed when clicking the notification (optional)</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.all_users(class="form-check-input") }}
+                                {{ form.all_users.label(class="form-check-label") }}
+                                <div class="form-text">Send to all approved users</div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            This will send a notification to <strong>all selected users</strong>. Use this feature responsibly.
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-between mt-4">
+                            <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-secondary">Cancel</a>
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

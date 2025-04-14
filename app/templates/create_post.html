@@ -1,0 +1,208 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <!-- Debug Info -->
+    {% if form.content.data or (editing and post_content) %}
+    <div id="debug-content-info" style="background-color: #f8f9fa; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd;">
+        <h6>Debug Info (Click to toggle)</h6>
+        <div id="debug-content-details" style="display: none;">
+            <p>Form content exists: {{ 'Yes' if form.content.data else 'No' }}</p>
+            <p>Form content length: {{ form.content.data|length if form.content.data else 0 }}</p>
+            <p>Editing mode: {{ 'Yes' if editing else 'No' }}</p>
+            {% if editing and post_content %}
+            <p>Post content length: {{ post_content|length }}</p>
+            <p>First 100 chars: <code>{{ post_content[:100]|e }}</code></p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-md-10 offset-md-1">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">{{ legend }}</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="" id="post-form">
+                            {{ form.hidden_tag() }}
+                            <div class="mb-3">
+                                <label class="form-label">Title</label>
+                                <input type="text" name="title" class="form-control" value="{{ form.title.data or '' }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Content</label>
+                                <!-- Jodit editor container -->
+                                <textarea id="jodit-editor" name="content">{% if editing and post_content %}{{ post_content|safe }}{% elif form.content.data %}{{ form.content.data|safe }}{% endif %}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <button type="submit" class="btn btn-primary">Post</button>
+                                <a href="{{ url_for('main.home') }}" class="btn btn-secondary">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Check if Jodit was loaded from layout
+if (typeof Jodit === 'undefined') {
+    console.log('Loading Jodit directly in create_post.html');
+    // Add Jodit CSS
+    const linkElem = document.createElement('link');
+    linkElem.rel = 'stylesheet';
+    linkElem.href = 'https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.6/jodit.min.css';
+    document.head.appendChild(linkElem);
+    
+    // Add Jodit JS
+    const scriptElem = document.createElement('script');
+    scriptElem.src = 'https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.6/jodit.min.js';
+    scriptElem.onload = initJodit;
+    document.head.appendChild(scriptElem);
+} else {
+    // Jodit is already loaded from layout
+    document.addEventListener('DOMContentLoaded', initJodit);
+}
+
+// Initialize Jodit
+function initJodit() {
+    console.log('Initializing Jodit editor for create/edit post');
+    
+    try {
+        // Initialize Jodit Editor
+        const editor = Jodit.make('#jodit-editor', {
+            height: 400,
+            width: 'auto',
+            buttons: [
+        'source', '|',
+        'bold',
+        'strikethrough',
+        'underline',
+        'italic', '|',
+        'ul',
+        'ol', '|',
+        'outdent', 'indent',  '|',
+        'font',
+        'fontsize',
+        'brush',
+        'paragraph', '|',
+        'image',
+        'video',
+        'table',
+        'link', '|',
+        'align', 'undo', 'redo', '|',
+        'hr',
+        'eraser',
+        'copyformat', '|',
+        'symbol',
+        'fullsize',
+        'print',
+        'about',
+        'preview'
+    ],
+            uploader: {
+                url: '{{ url_for("posts.upload_image") }}',
+                format: 'json',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                prepareData: function(formData) {
+                    formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+                    return formData;
+                },
+                isSuccess: function(resp) {
+                    return resp.success;
+                },
+                getMessage: function(resp) {
+                    return resp.message || '';
+                },
+                process: function(resp) {
+                    return {
+                        files: resp.files || [],
+                        error: resp.error || '',
+                        message: resp.message || ''
+                    };
+                },
+                error: function(e) {
+                    console.error('Upload error:', e);
+                },
+                defaultHandlerSuccess: function(data) {
+                    if (data.files && data.files.length) {
+                        data.files.forEach(file => {
+                            this.selection.insertImage(file);
+                        });
+                    }
+                }
+            },
+            events: {
+                afterInit: function() {
+                    console.log('Jodit editor successfully initialized');
+                }
+            }
+        });
+        
+        // Make editor instance available globally
+        window.joditEditor = editor;
+        
+        console.log('Editor instance created:', editor);
+        
+        // Function to apply syntax highlighting to code blocks
+        function highlightCodeBlocks() {
+            try {
+                const editorDocument = editor.editor;
+                const codeBlocks = editorDocument.querySelectorAll('pre code');
+                
+                if (codeBlocks.length > 0) {
+                    console.log('Found', codeBlocks.length, 'code blocks to highlight');
+                    codeBlocks.forEach(block => {
+                        // Only highlight if not already highlighted
+                        if (!block.classList.contains('hljs')) {
+                            hljs.highlightElement(block);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error highlighting code blocks:', error);
+            }
+        }
+        
+        // Add event to apply syntax highlighting
+        editor.events.on('change', highlightCodeBlocks);
+        
+        // Toggle debug info
+        const debugInfo = document.getElementById('debug-content-info');
+        if (debugInfo) {
+            debugInfo.addEventListener('click', function() {
+                const details = document.getElementById('debug-content-details');
+                if (details) {
+                    details.style.display = details.style.display === 'none' ? 'block' : 'none';
+                }
+            });
+        }
+        
+        // Add form validation
+        document.getElementById('post-form').addEventListener('submit', function(e) {
+            const content = editor.value;
+            
+            if (!content || content.trim() === '' || content.trim() === '<p></p>' || content.trim() === '<p><br></p>') {
+                e.preventDefault();
+                alert('Post content cannot be empty.');
+                return false;
+            }
+            
+            console.log('Form submitted with content length:', content.length);
+            
+            return true;
+        });
+    } catch (err) {
+        console.error('Error initializing Jodit:', err);
+        alert('There was an error initializing the editor. Please refresh the page and try again.');
+    }
+}
+</script>
+{% endblock %} 

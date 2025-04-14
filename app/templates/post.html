@@ -1,0 +1,504 @@
+{% extends "layout.html" %}
+{% block content %}
+    <article class="card mb-4">
+        <div class="card-body">
+            <h1 class="card-title">{{ post.title }}</h1>
+            <p class="text-muted">
+                Posted by <a href="{{ url_for('users.user_posts', username=post.author.username) }}">{{ post.author.full_name }}</a> on {{ post.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+            </p>
+            {% if post.updated_at != post.created_at %}
+            <p class="text-muted">
+                {% if post.last_modified_by and post.last_modified_by.is_admin() and post.last_modified_by.id != post.author.id %}
+                    Last modified by admin {{ post.last_modified_by.full_name }} on {{ post.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                {% elif post.last_modified_by %}
+                    Last modified by {{ post.last_modified_by.full_name }} on {{ post.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                {% else %}
+                    Last modified on {{ post.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                {% endif %}
+            </p>
+            {% endif %}
+            <hr>
+            <div class="card-text post-content">{{ post.content|safe }}</div>
+            
+            {% if post.author == current_user or current_user.is_admin() %}
+                <div class="mt-4">
+                    <a class="btn btn-sm btn-secondary" href="{{ url_for('posts.update_post', post_id=post.id) }}">Edit</a>
+                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">Delete</button>
+                    
+                    <!-- Hide/Unhide Button -->
+                    <form action="{{ url_for('posts.toggle_visibility', post_id=post.id) }}" method="POST" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        {% if post.is_hidden %}
+                            <button type="submit" class="btn btn-sm btn-success">Unhide Post</button>
+                        {% else %}
+                            <button type="submit" class="btn btn-sm btn-warning">Hide Post</button>
+                        {% endif %}
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+    </article>
+
+    <!-- Comment Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h4>Comments ({{ comments|length }})</h4>
+        </div>
+        <div class="card-body">
+            <!-- Comment Form -->
+            <div class="mb-4">
+                <h5>Add a Comment</h5>
+                {% if current_user.is_authenticated %}
+                    <form method="POST" action="" class="mb-3" id="main-comment-form">
+                        {{ comment_form.hidden_tag() }}
+                        <div class="mb-3">
+                            <label class="form-label">Comment</label>
+                            <textarea id="jodit-comment" name="content"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <button type="submit" class="btn btn-primary">Post Comment</button>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="alert alert-info">
+                        Please <a href="{{ url_for('auth.login', next=request.path) }}">log in</a> to post a comment.
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- List of Comments -->
+            {% if comments %}
+                <div id="comments">
+                    {% for comment in comments %}
+                        {% include "comment_block.html" %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    No comments yet. Be the first to comment!
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <a href="{{ url_for('main.home') }}" class="btn btn-outline-secondary">Back to Home</a>
+    </div>
+
+    <!-- JavaScript for reply functionality -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Apply syntax highlighting to all pre code blocks in post content
+            const codeBlocks = document.querySelectorAll('.post-content pre code');
+            if (codeBlocks.length > 0) {
+                console.log('Found', codeBlocks.length, 'code blocks to highlight');
+                codeBlocks.forEach(block => {
+                    // Only highlight if not already highlighted
+                    if (!block.classList.contains('hljs')) {
+                        hljs.highlightElement(block);
+                    }
+                });
+            }
+            
+            // Add copy button to code blocks
+            codeBlocks.forEach(block => {
+                // Create a container for the code block with relative positioning
+                const container = document.createElement('div');
+                container.className = 'code-block-container';
+                container.style.position = 'relative';
+                
+                // Create the copy button
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-code-btn btn btn-sm btn-light';
+                copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+                copyBtn.style.position = 'absolute';
+                copyBtn.style.top = '5px';
+                copyBtn.style.right = '5px';
+                copyBtn.style.zIndex = '10';
+                copyBtn.title = 'Copy code';
+                
+                // Add click handler to copy code
+                copyBtn.addEventListener('click', function() {
+                    const code = block.textContent;
+                    navigator.clipboard.writeText(code).then(() => {
+                        copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+                        setTimeout(() => {
+                            copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('Failed to copy: ', err);
+                        copyBtn.innerHTML = '<i class="fas fa-times"></i>';
+                        setTimeout(() => {
+                            copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+                        }, 2000);
+                    });
+                });
+                
+                // Place block inside container
+                const parent = block.parentNode;
+                parent.parentNode.insertBefore(container, parent);
+                container.appendChild(parent);
+                container.appendChild(copyBtn);
+            });
+            
+            // Handle delete form submission
+            const deleteForm = document.getElementById('delete-post-form');
+            if (deleteForm) {
+                deleteForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    console.log('Submitting delete form');
+                    // Submit after a brief delay
+                    setTimeout(() => {
+                        this.submit();
+                    }, 100);
+                });
+            }
+            
+            // Handle comment delete button clicks
+            document.querySelectorAll('.delete-comment-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const commentId = this.getAttribute('data-comment-id');
+                    const commentType = this.getAttribute('data-comment-type');
+                    
+                    if (confirm(`Are you sure you want to delete this ${commentType}?`)) {
+                        // Get the parent form and submit it
+                        const form = this.closest('.delete-comment-form');
+                        if (form) {
+                            console.log(`Deleting ${commentType} with ID: ${commentId}`);
+                            form.submit();
+                        }
+                    }
+                });
+            });
+            
+            // Set up the main comment form submission
+            const mainCommentForm = document.getElementById('main-comment-form');
+            if (mainCommentForm) {
+                mainCommentForm.addEventListener('submit', function(e) {
+                    // Prevent default submission
+                    e.preventDefault();
+                    
+                    // Get the content from Jodit editor
+                    const joditCommentEditor = Jodit.instances.get('jodit-comment');
+                    
+                    if (joditCommentEditor) {
+                        const content = joditCommentEditor.value;
+                        
+                        // Validate content
+                        if (!content || content.trim() === '' || content.trim() === '<p></p>' || content.trim() === '<p><br></p>') {
+                            alert('Please enter a comment before submitting.');
+                            return false;
+                        }
+                        
+                        console.log('Submitting form with content length:', content.length);
+                        this.submit();
+                    }
+                });
+            }
+            
+            // Reply button click handler
+            document.querySelectorAll('.reply-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const commentId = this.getAttribute('data-comment-id');
+                    const replyForm = document.getElementById(`reply-form-${commentId}`);
+                    
+                    if (replyForm) {
+                        // Display the reply form
+                        replyForm.style.display = 'block';
+                        
+                        // Initialize or focus Jodit editor
+                        const replyTextarea = document.getElementById(`reply-${commentId}`);
+                        if (replyTextarea) {
+                            let replyEditor = Jodit.instances.get(`reply-${commentId}`);
+                            
+                            if (replyEditor) {
+                                setTimeout(() => replyEditor.selection.focus(), 100);
+                            } else {
+                                replyEditor = Jodit.make(`#reply-${commentId}`, {
+                                    height: 150,
+                                    toolbarAdaptive: false,
+                                    buttons: [
+                                        'bold', 'italic', 'underline', '|',
+                                        'ul', 'ol', '|',
+                                        'link', 'image'
+                                    ],
+                                    uploader: {
+                                        url: '{{ url_for("posts.upload_image") }}',
+                                        format: 'json',
+                                        method: 'POST',
+                                        prepareData: function(formData) {
+                                            formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+                                            return formData;
+                                        },
+                                        isSuccess: function(resp) {
+                                            return resp && (resp.success || resp.url || resp.link);
+                                        },
+                                        process: function(resp) {
+                                            return {
+                                                files: resp.url ? [resp.url] : resp.link ? [resp.link] : [],
+                                                error: resp.error || '',
+                                                msg: resp.message || ''
+                                            };
+                                        }
+                                    }
+                                });
+                                setTimeout(() => replyEditor.selection.focus(), 100);
+                            }
+                        }
+                    }
+                });
+            });
+            
+            // Handle reply form submissions
+            document.querySelectorAll('.reply-form-element').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const commentId = this.getAttribute('data-comment-id');
+                    const replyEditor = Jodit.instances.get(`reply-${commentId}`);
+                    
+                    if (replyEditor) {
+                        const content = replyEditor.value;
+                        
+                        // Validate content
+                        if (!content || content.trim() === '' || content.trim() === '<p></p>' || content.trim() === '<p><br></p>') {
+                            alert('Please enter a reply before submitting.');
+                            return false;
+                        }
+                        
+                        console.log(`Submitting reply for comment ${commentId}`);
+                        this.submit();
+                    }
+                });
+            });
+            
+            // Cancel reply button handler
+            document.querySelectorAll('.cancel-reply').forEach(button => {
+                button.addEventListener('click', function() {
+                    const commentId = this.getAttribute('data-comment-id');
+                    const replyForm = document.getElementById(`reply-form-${commentId}`);
+                    if (replyForm) {
+                        replyForm.style.display = 'none';
+                    }
+                });
+            });
+            
+            // Toggle replies visibility
+            document.querySelectorAll('.toggle-replies').forEach(button => {
+                button.addEventListener('click', function() {
+                    const commentId = this.getAttribute('data-comment-id');
+                    const repliesContainer = document.getElementById(`replies-${commentId}`);
+                    
+                    if (repliesContainer) {
+                        if (repliesContainer.style.display === 'none') {
+                            repliesContainer.style.display = 'block';
+                            this.innerHTML = '<i class="fas fa-caret-down me-1"></i>Hide Replies';
+                        } else {
+                            repliesContainer.style.display = 'none';
+                            this.innerHTML = '<i class="fas fa-caret-right me-1"></i>Show Replies';
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+
+    <!-- Delete Post Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Delete Post</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this post? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form action="{{ url_for('posts.delete_post', post_id=post.id) }}" method="POST" id="delete-post-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Ensure Jodit is available -->
+<script>
+    // Check if Jodit was loaded from layout
+    if (typeof Jodit === 'undefined') {
+        console.log('Loading Jodit directly in post.html');
+        // Add Jodit CSS
+        const linkElem = document.createElement('link');
+        linkElem.rel = 'stylesheet';
+        linkElem.href = 'https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.6/jodit.min.css';
+        document.head.appendChild(linkElem);
+        
+        // Add Jodit JS
+        const scriptElem = document.createElement('script');
+        scriptElem.src = 'https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.6/jodit.min.js';
+        scriptElem.onload = initJodit;
+        document.head.appendChild(scriptElem);
+    } else {
+        // Jodit is already loaded from layout
+        document.addEventListener('DOMContentLoaded', initJodit);
+    }
+    
+    // Initialize Jodit editors for comments and replies
+    function initJodit() {
+        console.log('Initializing Jodit editors for comments and replies');
+        
+        // Initialize Jodit for comments if it exists
+        const commentTextarea = document.getElementById('jodit-comment');
+        if (commentTextarea) {
+            try {
+                const commentEditor = Jodit.make('#jodit-comment', {
+                    height: 200,
+                    width: 'auto',
+                    buttons: [
+                        'bold', 'italic', 'underline', '|',
+                        'ul', 'ol', '|',
+                        'link', 'image', '|',
+                        'source'
+                    ],
+                    uploader: {
+                        url: '{{ url_for("posts.upload_image") }}',
+                        format: 'json',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        prepareData: function(formData) {
+                            formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+                            return formData;
+                        },
+                        isSuccess: function(resp) {
+                            return resp.success;
+                        },
+                        getMessage: function(resp) {
+                            return resp.message || '';
+                        },
+                        process: function(resp) {
+                            return {
+                                files: resp.files || [],
+                                error: resp.error || '',
+                                message: resp.message || ''
+                            };
+                        },
+                        error: function(e) {
+                            console.error('Upload error:', e);
+                        },
+                        defaultHandlerSuccess: function(data) {
+                            if (data.files && data.files.length) {
+                                data.files.forEach(file => {
+                                    this.selection.insertImage(file);
+                                });
+                            }
+                        }
+                    }
+                });
+                
+                console.log('Comment editor initialized:', commentEditor);
+
+                // Update main comment form submission to use Jodit
+                const mainCommentForm = document.getElementById('main-comment-form');
+                if (mainCommentForm) {
+                    mainCommentForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        
+                        const content = commentEditor.value;
+                        
+                        // Validate content
+                        if (!content || content.trim() === '' || content.trim() === '<p></p>' || content.trim() === '<p><br></p>') {
+                            alert('Please enter a comment before submitting.');
+                            return false;
+                        }
+                        
+                        console.log('Submitting comment with content length:', content.length);
+                        this.submit();
+                    });
+                }
+            } catch (error) {
+                console.error('Error initializing comment editor:', error);
+            }
+        }
+        
+        // Initialize Jodit for reply forms that exist
+        document.querySelectorAll('.reply-form-element').forEach(form => {
+            const commentId = form.getAttribute('data-comment-id');
+            const replyTextarea = document.getElementById(`reply-${commentId}`);
+            
+            if (replyTextarea) {
+                try {
+                    const replyEditor = Jodit.make(`#reply-${commentId}`, {
+                        height: 150,
+                        width: 'auto',
+                        buttons: [
+                            'bold', 'italic', 'underline', '|',
+                            'ul', 'ol', '|',
+                            'link', 'image'
+                        ],
+                        uploader: {
+                            url: '{{ url_for("posts.upload_image") }}',
+                            format: 'json',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            prepareData: function(formData) {
+                                formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+                                return formData;
+                            },
+                            isSuccess: function(resp) {
+                                return resp.success;
+                            },
+                            getMessage: function(resp) {
+                                return resp.message || '';
+                            },
+                            process: function(resp) {
+                                return {
+                                    files: resp.files || [],
+                                    error: resp.error || '',
+                                    message: resp.message || ''
+                                };
+                            },
+                            error: function(e) {
+                                console.error('Upload error:', e);
+                            },
+                            defaultHandlerSuccess: function(data) {
+                                if (data.files && data.files.length) {
+                                    data.files.forEach(file => {
+                                        this.selection.insertImage(file);
+                                    });
+                                }
+                            }
+                        }
+                    });
+                    
+                    console.log(`Reply editor ${commentId} initialized:`, replyEditor);
+                    
+                    // Update reply form submission
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        
+                        const content = replyEditor.value;
+                        
+                        // Validate content
+                        if (!content || content.trim() === '' || content.trim() === '<p></p>' || content.trim() === '<p><br></p>') {
+                            alert('Please enter a reply before submitting.');
+                            return false;
+                        }
+                        
+                        console.log(`Submitting reply for comment ${commentId}`);
+                        this.submit();
+                    });
+                } catch (error) {
+                    console.error(`Error initializing reply editor for comment ${commentId}:`, error);
+                }
+            }
+        });
+    }
+</script>
+{% endblock %} 
